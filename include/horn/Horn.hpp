@@ -154,7 +154,7 @@ namespace ufo
       m_fp.reset (new ZFixedPoint<EZ3> (m_z3));
       ZFixedPoint<EZ3> &fp = *m_fp;
       fp.loadFPfromFile(smt);
-      
+
       for (auto &a : fp.m_rels)
       {
         if (a->arity() == 2)
@@ -179,7 +179,7 @@ namespace ufo
           }
         }
       }
-      
+
       for (auto &r: fp.m_rules)
       {
         chcs.push_back(HornRuleExt());
