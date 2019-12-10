@@ -221,9 +221,9 @@ namespace ufo
     outs() << "Product expr: " << *product_expr << "\n";
 
     if ( !utils.isSat(product_expr) )
-      outs() << "SAT -- We are done!\n";
+      outs() << "Two programs are equivalent -- we are done!\n";
     else
-      outs() << "UNSAT -- Programs are not equivalent!\n";
+      outs() << "Programs are not equivalent!\n";
 
   };
 }
