@@ -216,10 +216,11 @@ namespace ufo
     outs() << "Equivalent inputs: \n";
     outs() << *eq_dst << "\n";
 
+    eq_dst = mk<NEG>(eq_dst);
     Expr product_expr = mk<AND>(combined_init_trans, eq_src, eq_dst);
     outs() << "Product expr: " << *product_expr << "\n";
 
-    if ( utils.isSat(product_expr) )
+    if ( !utils.isSat(product_expr) )
       outs() << "We are done!\n";
 
   };
