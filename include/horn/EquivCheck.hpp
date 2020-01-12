@@ -1,6 +1,8 @@
 #ifndef EQUIVHECK__HPP__
 #define EQUIVHECK__HPP__
 
+#include <string>
+
 #include "Horn.hpp"
 #include "CandChecker.hpp"
 #include "ae/SMTUtils.hpp"
@@ -51,27 +53,23 @@ namespace ufo
     HornRuleExt* INIT;
     HornRuleExt* BAD;
   };
-  inline struct TRRels getTransitionRelations( CHCs chc )
+  inline struct TRRels getTransitionRelations( CHCs &chc )
   {
     TRRels retval;
     for (auto &hr: chc.chcs)
     {
       // if hr is a TR()
       if ( !hr.isFact && !hr.isQuery  && hr.isInductive)
-      {
-	retval.TR =  &hr;
+        retval.TR =  &hr;
         /* outs () << *(trans_hr->body) << "\n"; */
-      }
 
       // if hr is an INIT()
       else if ( hr.isFact && !hr.isQuery && !hr.isInductive )
-      {
-	retval.INIT =  &hr;
-      }
+        retval.INIT =  &hr;
 
       // if hr is a BAD()
       else if ( !hr.isFact && hr.isQuery  && !hr.isInductive)
-	retval.BAD =  &hr;
+        retval.BAD =  &hr;
     }
 
     return retval;
@@ -83,16 +81,16 @@ namespace ufo
     EZ3 z3(efac);
 
     CHCs ruleManager1(efac, z3);
-    ruleManager1.parse(chcfile1, "v_");
+    ruleManager1.parse(chcfile1, "v0_");
     checkPrerequisites(ruleManager1);
-    outs () << "Program encoding #1:\n";
-    ruleManager1.print();
+    /* outs () << "Program encoding #1:\n"; */
+    /* ruleManager1.print(); */
 
     CHCs ruleManager2(efac, z3);
-    ruleManager2.parse(chcfile2, "w_");
+    ruleManager2.parse(chcfile2, "w0_");
     checkPrerequisites(ruleManager2);
-    outs () << "Program encoding #2:\n";
-    ruleManager2.print();
+    /* outs () << "Program encoding #2:\n"; */
+    /* ruleManager2.print(); */
 
     ExprFactory expr_factory;
     SMTUtils utils(expr_factory);
@@ -120,35 +118,63 @@ namespace ufo
     fact_hr2 = trs2.INIT;
     bad_exprs.push_back(trs2.BAD->body);
 
-#if 0
-    // Find parts of the CHC
-    for (auto &hr: ruleManager1.chcs)
+    outs() << "Original TR:\n";
+    outs() << "\t" << *(trans_hr1->body) << "\n";
+
+    HornRuleExt *prev_rule = trans_hr1;
+    HornRuleExt *prev_rule = trans_hr2;
+    std::vector<CHCs> temp1;
+    std::vector<CHCs> temp2;
+    for ( int i = 1; i < unroll1; i++ )
     {
-      // if hr is a TR()
-      if ( !hr.isFact && !hr.isQuery  && hr.isInductive)
-      {
-        trans_exprs.push_back(hr.body);
-        trans_hr1 = &hr;
-        /* outs () << *(trans_hr->body) << "\n"; */
-      }
-
-      // if hr is an INIT()
-      else if ( hr.isFact && !hr.isQuery && !hr.isInductive )
-      {
-        fact_hr1 = &hr;
-      }
-
-      // if hr is a BAD()
-      else if ( !hr.isFact && hr.isQuery  && !hr.isInductive)
-        bad_exprs.push_back(hr.body);
+      CHCs real_temp(efac, z3);
+      real_temp.parse(chcfile1, "v" + to_string(i) + "_");
+      checkPrerequisites(real_temp);
+      temp1.push_back(real_temp);
     }
-#endif
-
-    for ( int i = 0; i < unroll1; i++ )
+    for ( int i = 1; i < unroll1; i++ )
     {
-      CHCs ruleManager(efac, z3);
+      CHCs real_temp(efac, z3);
+      real_temp.parse(chcfile1, "v" + to_string(i) + "_");
+      checkPrerequisites(real_temp);
+      temp2.push_back(real_temp);
     }
 
+    /* outs() << "Printing out TRs of unrolling\n"; */
+    for ( int i = 1; i < unroll1; i++ )
+    {
+      struct TRRels rels = getTransitionRelations(temp1[i-1]);
+      Expr replaced_tr = rels.TR->body;
+      /* outs() << "Before:\n"; */
+      /* outs() << "\t" << *(rels.TR->body) << "\n"; */
+
+      /* outs() << "Prev rule pointer: " << prev_rule << "\n"; */
+      for ( int i = 0; i < rels.TR->srcVars.size(); i++ )
+        replaced_tr = replaceAll(replaced_tr, rels.TR->srcVars[i], prev_rule->dstVars[i]);
+      trans_exprs.push_back(replaced_tr);
+
+      /* outs() << "After:\n"; */
+      /* outs() << "\t" << *(replaced_tr) << "\n"; */
+
+      prev_rule = rels.TR;
+    }
+    for ( int i = 1; i < unroll1; i++ )
+    {
+      struct TRRels rels = getTransitionRelations(temp2[i-1]);
+      Expr replaced_tr = rels.TR->body;
+      /* outs() << "Before:\n"; */
+      /* outs() << "\t" << *(rels.TR->body) << "\n"; */
+
+      /* outs() << "Prev rule pointer: " << prev_rule << "\n"; */
+      for ( int i = 0; i < rels.TR->srcVars.size(); i++ )
+        replaced_tr = replaceAll(replaced_tr, rels.TR->srcVars[i], prev_rule->dstVars[i]);
+      trans_exprs.push_back(replaced_tr);
+
+      /* outs() << "After:\n"; */
+      /* outs() << "\t" << *(replaced_tr) << "\n"; */
+
+      prev_rule = rels.TR;
+    }
 
     outs () << "---- Transition relations ----\n";
     outs () << "Program 1: " << *(trans_hr1->body) << "\n";
@@ -159,29 +185,6 @@ namespace ufo
     // outs() << "TEST: " << *replaced_init1 << "\n";
     init_exprs.push_back(replaced_init1);
 
-#if 0
-    for (auto &hr: ruleManager2.chcs)
-    {
-      // if hr is a TR()
-      if ( !hr.isFact && !hr.isQuery  && hr.isInductive)
-      {
-        trans_exprs.push_back(hr.body);
-        trans_hr2 = &hr;
-        /* outs () << *(trans_hr->body) << "\n"; */
-      }
-
-      // basically if hr is an INIT()
-      else if ( hr.isFact && !hr.isQuery && !hr.isInductive )
-      {
-        fact_hr2 = &hr;
-      }
-
-      // if hr is a BAD()
-      else if ( !hr.isFact && hr.isQuery  && !hr.isInductive)
-        bad_exprs.push_back(hr.body);
-    }
-#endif
-
     outs () << "Program 2: " << *(trans_hr2->body) << "\n";
     // outs() << "src vars: " << "\n";
     Expr replaced_init2 = fact_hr2->body;
@@ -189,23 +192,6 @@ namespace ufo
       replaced_init2 = replaceAll(replaced_init2, trans_hr2->dstVars[i], trans_hr2->srcVars[i]);
     // outs() << "TEST: " << *replaced_init2 << "\n";
     init_exprs.push_back(replaced_init2);
-
-#if 0
-    for (auto &hr: ruleManager2.chcs)
-    {
-      // basically if hr is an INIT()
-      if ( hr.isFact && !hr.isQuery && !hr.isInductive )
-        init_exprs.push_back(hr.body);
-
-      // if hr is a TR()
-      else if ( !hr.isFact && !hr.isQuery && hr.isInductive)
-        trans_exprs.push_back(hr.body);
-
-      // if hr is a BAD()
-      else if ( !hr.isFact && hr.isQuery  && !hr.isInductive)
-        bad_exprs.push_back(hr.body);
-    }
-#endif
 
     outs() << "************************************************\n";
 
@@ -220,7 +206,8 @@ namespace ufo
     if ( utils.isSat(combined_init) )
       outs() << "Combined init is SAT\n\n";
 
-    Expr combined_trans = mk<AND>(trans_exprs[0], trans_exprs[1]);
+    /* Expr combined_trans = mk<AND>(trans_exprs[0], trans_exprs[1]); */
+    Expr combined_trans = mk<AND>(trans_exprs);
     outs() << "Combined trans: ";
     outs() << *combined_trans << "\n\n";
 
