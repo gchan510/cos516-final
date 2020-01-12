@@ -46,27 +46,32 @@ namespace ufo
   /*
    * Return vector with [TR, INIT, BAD]
    */
-  inline std::vector<HornRuleExt> getTransitionRelations( CHCs chc )
+  struct TRRels{
+    HornRuleExt* TR;
+    HornRuleExt* INIT;
+    HornRuleExt* BAD;
+  };
+  inline struct TRRels getTransitionRelations( CHCs chc )
   {
-    std::vector<HornRuleExt> retval = {};
+    TRRels retval;
     for (auto &hr: chc.chcs)
     {
       // if hr is a TR()
       if ( !hr.isFact && !hr.isQuery  && hr.isInductive)
       {
-        retval.push_back(hr);
+	retval.TR =  &hr;
         /* outs () << *(trans_hr->body) << "\n"; */
       }
 
       // if hr is an INIT()
       else if ( hr.isFact && !hr.isQuery && !hr.isInductive )
       {
-        retval.push_back(hr);
+	retval.INIT =  &hr;
       }
 
       // if hr is a BAD()
       else if ( !hr.isFact && hr.isQuery  && !hr.isInductive)
-        retval.push_back(hr);
+	retval.BAD =  &hr;
     }
 
     return retval;
@@ -102,18 +107,18 @@ namespace ufo
     HornRuleExt *trans_hr2;
     HornRuleExt *fact_hr2;
 
-    std::vector<HornRuleExt> trs1 = getTransitionRelations(ruleManager1);
-    std::vector<HornRuleExt> trs2 = getTransitionRelations(ruleManager2);
+    struct TRRels trs1 = getTransitionRelations(ruleManager1);
+    struct TRRels trs2 = getTransitionRelations(ruleManager2);
 
-    trans_exprs.push_back(trs1[0].body);
-    trans_hr1 = &trs1[0];
-    fact_hr1 = &trs1[1];
-    bad_exprs.push_back(trs1[2].body);
+    trans_exprs.push_back(trs1.TR->body);
+    trans_hr1 = trs1.TR;
+    fact_hr1 = trs1.INIT;
+    bad_exprs.push_back(trs1.BAD->body);
 
-    trans_exprs.push_back(trs2[0].body);
-    trans_hr2 = &trs2[0];
-    fact_hr2 = &trs2[1];
-    bad_exprs.push_back(trs2[2].body);
+    trans_exprs.push_back(trs2.TR->body);
+    trans_hr2 = trs2.TR;
+    fact_hr2 = trs2.INIT;
+    bad_exprs.push_back(trs2.BAD->body);
 
 #if 0
     // Find parts of the CHC
