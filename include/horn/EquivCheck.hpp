@@ -43,7 +43,36 @@ namespace ufo
     }
   }
 
-  inline void equivCheck(string chcfile1, string chcfile2)
+  /*
+   * Return vector with [TR, INIT, BAD]
+   */
+  inline std::vector<HornRuleExt> getTransitionRelations( CHCs chc )
+  {
+    std::vector<HornRuleExt> retval = {};
+    for (auto &hr: chc.chcs)
+    {
+      // if hr is a TR()
+      if ( !hr.isFact && !hr.isQuery  && hr.isInductive)
+      {
+        retval.push_back(hr);
+        /* outs () << *(trans_hr->body) << "\n"; */
+      }
+
+      // if hr is an INIT()
+      else if ( hr.isFact && !hr.isQuery && !hr.isInductive )
+      {
+        retval.push_back(hr);
+      }
+
+      // if hr is a BAD()
+      else if ( !hr.isFact && hr.isQuery  && !hr.isInductive)
+        retval.push_back(hr);
+    }
+
+    return retval;
+  }
+
+  inline void equivCheck(string chcfile1, string chcfile2, int unroll1, int unroll2)
   {
     ExprFactory efac;
     EZ3 z3(efac);
@@ -73,6 +102,21 @@ namespace ufo
     HornRuleExt *trans_hr2;
     HornRuleExt *fact_hr2;
 
+    std::vector<HornRuleExt> trs1 = getTransitionRelations(ruleManager1);
+    std::vector<HornRuleExt> trs2 = getTransitionRelations(ruleManager2);
+
+    trans_exprs.push_back(trs1[0].body);
+    trans_hr1 = &trs1[0];
+    fact_hr1 = &trs1[1];
+    bad_exprs.push_back(trs1[2].body);
+
+    trans_exprs.push_back(trs2[0].body);
+    trans_hr2 = &trs2[0];
+    fact_hr2 = &trs2[1];
+    bad_exprs.push_back(trs2[2].body);
+
+#if 0
+    // Find parts of the CHC
     for (auto &hr: ruleManager1.chcs)
     {
       // if hr is a TR()
@@ -83,7 +127,7 @@ namespace ufo
         /* outs () << *(trans_hr->body) << "\n"; */
       }
 
-      // basically if hr is an INIT()
+      // if hr is an INIT()
       else if ( hr.isFact && !hr.isQuery && !hr.isInductive )
       {
         fact_hr1 = &hr;
@@ -93,15 +137,24 @@ namespace ufo
       else if ( !hr.isFact && hr.isQuery  && !hr.isInductive)
         bad_exprs.push_back(hr.body);
     }
+#endif
 
-    outs () << *(trans_hr1->body) << "\n";
-    outs() << "src vars: " << "\n";
+    for ( int i = 0; i < unroll1; i++ )
+    {
+      CHCs ruleManager(efac, z3);
+    }
+
+
+    outs () << "---- Transition relations ----\n";
+    outs () << "Program 1: " << *(trans_hr1->body) << "\n";
+    // outs() << "src vars: " << "\n";
     Expr replaced_init1 = fact_hr1->body;
     for ( int i = 0; i < trans_hr1->srcVars.size(); i++ )
       replaced_init1 = replaceAll(replaced_init1, trans_hr1->dstVars[i], trans_hr1->srcVars[i]);
-    outs() << "TEST: " << *replaced_init1 << "\n";
+    // outs() << "TEST: " << *replaced_init1 << "\n";
     init_exprs.push_back(replaced_init1);
 
+#if 0
     for (auto &hr: ruleManager2.chcs)
     {
       // if hr is a TR()
@@ -122,13 +175,14 @@ namespace ufo
       else if ( !hr.isFact && hr.isQuery  && !hr.isInductive)
         bad_exprs.push_back(hr.body);
     }
+#endif
 
-    outs () << *(trans_hr2->body) << "\n";
-    outs() << "src vars: " << "\n";
+    outs () << "Program 2: " << *(trans_hr2->body) << "\n";
+    // outs() << "src vars: " << "\n";
     Expr replaced_init2 = fact_hr2->body;
     for ( int i = 0; i < trans_hr2->srcVars.size(); i++ )
       replaced_init2 = replaceAll(replaced_init2, trans_hr2->dstVars[i], trans_hr2->srcVars[i]);
-    outs() << "TEST: " << *replaced_init2 << "\n";
+    // outs() << "TEST: " << *replaced_init2 << "\n";
     init_exprs.push_back(replaced_init2);
 
 #if 0
@@ -188,8 +242,6 @@ namespace ufo
       return;
     }
 
-    /* TODO Add check of INIT conditions being equivalent*/
-
     vector<Expr> eq_exprs;
     for ( int i = 0; i < trans_hr1->srcVars.size(); i++ )
     {
@@ -200,8 +252,8 @@ namespace ufo
       eq_src = mknary<AND>(eq_exprs.begin(), eq_exprs.end());
     else
       eq_src = eq_exprs[0];
-    outs() << "Equivalent inputs: \n";
-    outs() << *eq_src << "\n";
+    /* outs() << "Equivalent inputs: \n"; */
+    /* outs() << *eq_src << "\n"; */
 
     eq_exprs.clear();
     for ( int i = 0; i < trans_hr1->dstVars.size(); i++ )
@@ -213,8 +265,8 @@ namespace ufo
       eq_dst = mknary<AND>(eq_exprs.begin(), eq_exprs.end());
     else
       eq_dst = eq_exprs[0];
-    outs() << "Equivalent inputs: \n";
-    outs() << *eq_dst << "\n";
+    /* outs() << "Equivalent ouputs: \n"; */
+    /* outs() << *eq_dst << "\n"; */
 
     eq_dst = mk<NEG>(eq_dst);
     Expr product_expr = mk<AND>(combined_init_trans, eq_src, eq_dst);
