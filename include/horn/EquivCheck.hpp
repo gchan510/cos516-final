@@ -98,7 +98,9 @@ namespace ufo
     // TODO: check equivalence between programs encoded in ruleManager1 and ruleManager2
     std::vector<Expr> init_exprs;
     std::vector<Expr> trans_exprs;
-    std::vector<Expr> bad_exprs;
+    // std::vector<Expr> bad_exprs;
+    HornRuleExt *bad_expr1;
+    HornRuleExt *bad_expr2;
 
     HornRuleExt *trans_hr1;
     HornRuleExt *fact_hr1;
@@ -111,18 +113,19 @@ namespace ufo
     trans_exprs.push_back(trs1.TR->body);
     trans_hr1 = trs1.TR;
     fact_hr1 = trs1.INIT;
-    bad_exprs.push_back(trs1.BAD->body);
+    bad_expr1 = trs1.BAD;
 
     trans_exprs.push_back(trs2.TR->body);
     trans_hr2 = trs2.TR;
     fact_hr2 = trs2.INIT;
-    bad_exprs.push_back(trs2.BAD->body);
+    bad_expr2 = trs2.BAD;
 
-    outs() << "Original TR:\n";
-    outs() << "\t" << *(trans_hr1->body) << "\n";
+    /* outs() << "Original TR:\n"; */
+    /* outs() << "\t" << *(trans_hr1->body) << "\n"; */
 
+    HornRuleExt *trans_dst1 = trans_hr1;
+    HornRuleExt *trans_dst2 = trans_hr2;
     HornRuleExt *prev_rule = trans_hr1;
-    HornRuleExt *prev_rule = trans_hr2;
     std::vector<CHCs> temp1;
     std::vector<CHCs> temp2;
     for ( int i = 1; i < unroll1; i++ )
@@ -132,10 +135,10 @@ namespace ufo
       checkPrerequisites(real_temp);
       temp1.push_back(real_temp);
     }
-    for ( int i = 1; i < unroll1; i++ )
+    for ( int i = 1; i < unroll2; i++ )
     {
       CHCs real_temp(efac, z3);
-      real_temp.parse(chcfile1, "v" + to_string(i) + "_");
+      real_temp.parse(chcfile2, "w" + to_string(i) + "_");
       checkPrerequisites(real_temp);
       temp2.push_back(real_temp);
     }
@@ -157,8 +160,12 @@ namespace ufo
       /* outs() << "\t" << *(replaced_tr) << "\n"; */
 
       prev_rule = rels.TR;
+      bad_expr1 = rels.BAD;
+      trans_dst1 = rels.TR;
     }
-    for ( int i = 1; i < unroll1; i++ )
+
+    prev_rule = trans_hr2;
+    for ( int i = 1; i < unroll2; i++ )
     {
       struct TRRels rels = getTransitionRelations(temp2[i-1]);
       Expr replaced_tr = rels.TR->body;
@@ -174,18 +181,22 @@ namespace ufo
       /* outs() << "\t" << *(replaced_tr) << "\n"; */
 
       prev_rule = rels.TR;
+      bad_expr2 = rels.BAD;
+      trans_dst2 = rels.TR;
     }
 
-    outs () << "---- Transition relations ----\n";
-    outs () << "Program 1: " << *(trans_hr1->body) << "\n";
+    /* outs () << "---- Transition relations ----\n"; */
+    /* outs () << "Program 1: " << *(trans_hr1->body) << "\n"; */
     // outs() << "src vars: " << "\n";
+
+    /* Rename INIT variables */
     Expr replaced_init1 = fact_hr1->body;
     for ( int i = 0; i < trans_hr1->srcVars.size(); i++ )
       replaced_init1 = replaceAll(replaced_init1, trans_hr1->dstVars[i], trans_hr1->srcVars[i]);
     // outs() << "TEST: " << *replaced_init1 << "\n";
     init_exprs.push_back(replaced_init1);
 
-    outs () << "Program 2: " << *(trans_hr2->body) << "\n";
+    /* outs () << "Program 2: " << *(trans_hr2->body) << "\n"; */
     // outs() << "src vars: " << "\n";
     Expr replaced_init2 = fact_hr2->body;
     for ( int i = 0; i < trans_hr2->srcVars.size(); i++ )
@@ -193,11 +204,13 @@ namespace ufo
     // outs() << "TEST: " << *replaced_init2 << "\n";
     init_exprs.push_back(replaced_init2);
 
+    /* Add BAD condition */
+
     outs() << "************************************************\n";
 
     outs() << "Length of init_exprs: " << init_exprs.size() << "\n";
     outs() << "Length of trans_exprs: " << trans_exprs.size() << "\n";
-    outs() << "Length of bad_exprs: " << bad_exprs.size() << "\n";
+    /* outs() << "Length of bad_exprs: " << bad_exprs.size() << "\n"; */
 
     Expr combined_init = mk<AND>(init_exprs[0], init_exprs[1]);
     outs() << "Combined init: ";
@@ -207,14 +220,15 @@ namespace ufo
       outs() << "Combined init is SAT\n\n";
 
     /* Expr combined_trans = mk<AND>(trans_exprs[0], trans_exprs[1]); */
-    Expr combined_trans = mk<AND>(trans_exprs);
+    Expr combined_trans = mknary<AND>(trans_exprs.begin(), trans_exprs.end());
     outs() << "Combined trans: ";
     outs() << *combined_trans << "\n\n";
 
     if ( utils.isSat(combined_trans) )
       outs() << "Combined trans is SAT\n\n";
 
-    Expr combined_bad = mk<AND>(bad_exprs[0], bad_exprs[1]);
+    // Expr combined_bad = mk<AND>(bad_exprs[0], bad_exprs[1]);
+    Expr combined_bad = mk<AND>(bad_expr2->body, bad_expr2->body);
     outs() << "Combined bad: ";
     outs() << *combined_bad << "\n\n";
 
@@ -248,9 +262,9 @@ namespace ufo
     /* outs() << *eq_src << "\n"; */
 
     eq_exprs.clear();
-    for ( int i = 0; i < trans_hr1->dstVars.size(); i++ )
+    for ( int i = 0; i < trans_dst1->dstVars.size(); i++ )
     {
-      eq_exprs.push_back(mk<EQ>(trans_hr1->dstVars[i], trans_hr2->dstVars[i]));
+      eq_exprs.push_back(mk<EQ>(trans_dst1->dstVars[i], trans_dst2->dstVars[i]));
     }
     Expr eq_dst;
     if (eq_exprs.size() > 1)
