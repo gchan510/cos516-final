@@ -1,0 +1,28 @@
+(declare-rel inv (Int Int))
+(declare-var x Int)
+(declare-var x1 Int)
+(declare-var y Int)
+(declare-var y1 Int)
+(declare-var len Int)
+
+(declare-rel fail ())
+
+(rule (=>
+   (and (= x 5) (= y 0)) (inv x y)
+  )
+)
+
+(rule (=> 
+    (and 
+	(inv x y) 
+	(= y1 (/ (* x (+ x 1)) 2))
+        (= x1 0)
+    )
+    (inv x1 y1)
+  )
+)
+
+(rule (=> (and (inv x y) (= y (/ (* x (+ x 1)) 2))) fail))
+
+(query fail :print-certificate true)
+
