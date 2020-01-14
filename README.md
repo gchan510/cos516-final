@@ -12,3 +12,6 @@ Skolemizer for AE-formulas in LIA/LRA based on the <a href="http://seahorn.githu
 The binary of AE-VAL can be found in `build/tools/aeval/`
 
 ## COS516 Final Project
+To check equivalence between two programs, run
+
+`equiv <program1> <program2> [unroll1 unroll2]`
