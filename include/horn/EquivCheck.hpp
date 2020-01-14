@@ -56,20 +56,29 @@ namespace ufo
   inline struct TRRels getTransitionRelations( CHCs &chc )
   {
     TRRels retval;
+    /* chc.print(); */
     for (auto &hr: chc.chcs)
     {
       // if hr is a TR()
       if ( !hr.isFact && !hr.isQuery  && hr.isInductive)
+      {
         retval.TR =  &hr;
-        /* outs () << *(trans_hr->body) << "\n"; */
+        /* outs () << "TR: " << *(hr.body) << "\n"; */
+      }
 
       // if hr is an INIT()
       else if ( hr.isFact && !hr.isQuery && !hr.isInductive )
+      {
         retval.INIT =  &hr;
+        /* outs () << "INIT: " << *(hr.body) << "\n"; */
+      }
 
       // if hr is a BAD()
       else if ( !hr.isFact && hr.isQuery  && !hr.isInductive)
+      {
         retval.BAD =  &hr;
+        /* outs () << "BAD: " << *(hr.body) << "\n"; */
+      }
     }
 
     return retval;
@@ -208,39 +217,39 @@ namespace ufo
 
     outs() << "************************************************\n";
 
-    outs() << "Length of init_exprs: " << init_exprs.size() << "\n";
-    outs() << "Length of trans_exprs: " << trans_exprs.size() << "\n";
+    /* outs() << "Length of init_exprs: " << init_exprs.size() << "\n"; */
+    /* outs() << "Length of trans_exprs: " << trans_exprs.size() << "\n"; */
     /* outs() << "Length of bad_exprs: " << bad_exprs.size() << "\n"; */
 
     Expr combined_init = mk<AND>(init_exprs[0], init_exprs[1]);
     outs() << "Combined init: ";
     outs() << *combined_init << "\n\n";
 
-    if ( utils.isSat(combined_init) )
-      outs() << "Combined init is SAT\n\n";
+    /* if ( utils.isSat(combined_init) ) */
+    /*   outs() << "Combined init is SAT\n\n"; */
 
     /* Expr combined_trans = mk<AND>(trans_exprs[0], trans_exprs[1]); */
     Expr combined_trans = mknary<AND>(trans_exprs.begin(), trans_exprs.end());
     outs() << "Combined trans: ";
     outs() << *combined_trans << "\n\n";
 
-    if ( utils.isSat(combined_trans) )
-      outs() << "Combined trans is SAT\n\n";
+    /* if ( utils.isSat(combined_trans) ) */
+    /*   outs() << "Combined trans is SAT\n\n"; */
 
     // Expr combined_bad = mk<AND>(bad_exprs[0], bad_exprs[1]);
-    Expr combined_bad = mk<AND>(bad_expr2->body, bad_expr2->body);
-    outs() << "Combined bad: ";
-    outs() << *combined_bad << "\n\n";
+    /* Expr combined_bad = mk<AND>(bad_expr2->body, bad_expr2->body); */
+    /* outs() << "Combined bad: "; */
+    /* outs() << *combined_bad << "\n\n"; */
 
-    if ( utils.isSat(combined_bad) )
-      outs() << "Combined bad is SAT\n\n";
+    /* if ( utils.isSat(combined_bad) ) */
+    /*   outs() << "Combined bad is SAT\n\n"; */
 
     Expr combined_init_trans = mk<AND>(combined_init, combined_trans);
     outs () << "Combined init trans: ";
     outs () << *combined_init_trans << "\n\n";
 
-    if ( utils.isSat(combined_init_trans) )
-      outs() << "Combined init_trans is SAT\n\n";
+    /* if ( utils.isSat(combined_init_trans) ) */
+    /*   outs() << "Combined init_trans is SAT\n\n"; */
 
     if ( trans_hr1->srcVars.size() != trans_hr2->srcVars.size() )
     {
@@ -258,8 +267,8 @@ namespace ufo
       eq_src = mknary<AND>(eq_exprs.begin(), eq_exprs.end());
     else
       eq_src = eq_exprs[0];
-    /* outs() << "Equivalent inputs: \n"; */
-    /* outs() << *eq_src << "\n"; */
+    outs() << "Equivalent inputs: \n";
+    outs() << *eq_src << "\n";
 
     eq_exprs.clear();
     for ( int i = 0; i < trans_dst1->dstVars.size(); i++ )
@@ -271,8 +280,8 @@ namespace ufo
       eq_dst = mknary<AND>(eq_exprs.begin(), eq_exprs.end());
     else
       eq_dst = eq_exprs[0];
-    /* outs() << "Equivalent ouputs: \n"; */
-    /* outs() << *eq_dst << "\n"; */
+    outs() << "Equivalent ouputs: \n";
+    outs() << *eq_dst << "\n";
 
     eq_dst = mk<NEG>(eq_dst);
     Expr product_expr = mk<AND>(combined_init_trans, eq_src, eq_dst);
